@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, hasValidConfig } from '../lib/supabase';
-import { User, Video, SuccessStory } from '../types';
+import { Video, SuccessStory } from '../types';
 import { 
   Users, 
   Video as VideoIcon, 
@@ -14,13 +14,27 @@ import {
   TrendingUp,
   LogOut,
   Play,
-  Upload
+  Upload,
+  Calendar,
+  Mail,
+  UserCheck
 } from 'lucide-react';
+
+interface AuthUser {
+  id: string;
+  email: string;
+  created_at: string;
+  last_sign_in_at?: string;
+  email_confirmed_at?: string;
+  user_metadata?: {
+    full_name?: string;
+  };
+}
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<'users' | 'videos' | 'stories'>('users');
-  const [users, setUsers] = useState<User[]>([]);
+  const [authUsers, setAuthUsers] = useState<AuthUser[]>([]);
   const [videos, setVideos] = useState<Video[]>([]);
   const [stories, setStories] = useState<SuccessStory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -39,58 +53,46 @@ export default function AdminDashboard() {
   const fetchData = async () => {
     setLoading(true);
     
-    if (!hasValidConfig) {
-      // Show mock data when Supabase is not configured
-      const mockUser: User = {
-        id: 'mock-admin-id',
-        email: 'admin@themarketsecret.com',
-        full_name: 'Admin User',
-        subscription_status: 'advanced',
-        created_at: new Date().toISOString(),
-        last_login: new Date().toISOString()
-      };
-      setUsers([mockUser]);
-      setLoading(false);
-      return;
-    }
-    
     try {
-      // Fetch all user profiles from the profiles table
-      const { data: profileUsers, error: profileError } = await supabase
-        .from('profiles')
-        .select('*');
+      if (hasValidConfig) {
+        // Fetch all users from auth.users table using admin API
+        const { data: { users }, error } = await supabase.auth.admin.listUsers();
         
-      if (profileError) {
-        console.error('Error fetching profiles:', profileError);
-        // Fallback to showing current user only
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
-        if (currentUser) {
-          const adminUser: User = {
-            id: currentUser.id,
-            email: currentUser.email || '',
-            full_name: currentUser.user_metadata?.full_name || 'Admin',
-            subscription_status: 'advanced',
-            created_at: currentUser.created_at || new Date().toISOString(),
-            last_login: currentUser.last_sign_in_at || undefined
-          };
-          setUsers([adminUser]);
+        if (error) {
+          console.error('Error fetching auth users:', error);
+          // Fallback to showing current user only
+          const { data: { user: currentUser } } = await supabase.auth.getUser();
+          if (currentUser) {
+            setAuthUsers([{
+              id: currentUser.id,
+              email: currentUser.email || '',
+              created_at: currentUser.created_at || new Date().toISOString(),
+              last_sign_in_at: currentUser.last_sign_in_at || undefined,
+              email_confirmed_at: currentUser.email_confirmed_at || undefined,
+              user_metadata: currentUser.user_metadata || {}
+            }]);
+          }
+        } else {
+          setAuthUsers(users || []);
         }
       } else {
-        // Convert profiles to User type
-        const formattedUsers: User[] = profileUsers.map(profile => ({
-          id: profile.id,
-          email: profile.email,
-          full_name: profile.full_name || '',
-          subscription_status: profile.subscription_status || 'unpaid',
-          created_at: profile.created_at,
-          last_login: profile.last_login || undefined
-        }));
-        setUsers(formattedUsers);
+        // Show mock data when Supabase is not configured
+        const mockUser: AuthUser = {
+          id: 'mock-admin-id',
+          email: 'admin@themarketsecret.com',
+          created_at: new Date().toISOString(),
+          last_sign_in_at: new Date().toISOString(),
+          email_confirmed_at: new Date().toISOString(),
+          user_metadata: {
+            full_name: 'Admin User'
+          }
+        };
+        setAuthUsers([mockUser]);
       }
       
     } catch (error) {
       console.error('Error in fetchData:', error);
-      setUsers([]);
+      setAuthUsers([]);
     }
     
     setVideos([
@@ -114,9 +116,9 @@ export default function AdminDashboard() {
     navigate('/');
   };
 
-  const filteredUsers = users.filter(user => 
+  const filteredUsers = authUsers.filter(user => 
     user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
+    user.user_metadata?.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const filteredVideos = videos.filter(video =>
@@ -198,7 +200,7 @@ export default function AdminDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Success Stories</p>
                 <p className="text-2xl font-semibold text-gray-900">{stories.length}</p>
-              </div>
+              <p className="text-2xl font-semibold text-gray-900">{authUsers.length}</p>
             </div>
           </div>
         </div>
@@ -248,11 +250,11 @@ export default function AdminDashboard() {
                     if (activeTab === 'videos') setShowVideoModal(true);
                     if (activeTab === 'stories') setShowStoryModal(true);
                   }}
-                  className="bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors flex items-center space-x-2"
+            <UserCheck className="w-8 h-8 text-emerald-600" />
                 >
-                  <Plus className="w-5 h-5" />
+              <p className="text-sm font-medium text-gray-600">Confirmed Users</p>
                   <span>Add {activeTab === 'videos' ? 'Video' : 'Story'}</span>
-                </button>
+                {authUsers.filter(u => u.email_confirmed_at).length}
               )}
             </div>
           </div>
@@ -265,7 +267,7 @@ export default function AdminDashboard() {
                   <thead className="bg-gray-50">
                     <tr>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email Status</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Joined</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Last Login</th>
                       <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
@@ -276,27 +278,32 @@ export default function AdminDashboard() {
                       <tr key={user.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div>
-                            <div className="text-sm font-medium text-gray-900">{user.full_name}</div>
-                            <div className="text-sm text-gray-500">{user.email}</div>
+                            <div className="flex items-center">
+                              <Mail className="w-4 h-4 text-gray-400 mr-2" />
+                              <div>
+                                <div className="text-sm font-medium text-gray-900">
+                                  {user.user_metadata?.full_name || 'No name provided'}
+                                </div>
+                                <div className="text-sm text-gray-500">{user.email}</div>
+                              </div>
+                            </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                            user.subscription_status === 'advanced' 
+                          <span className={`inline-flex items-center px-2 py-1 text-xs font-semibold rounded-full ${
+                            user.email_confirmed_at
                               ? 'bg-emerald-100 text-emerald-800'
-                              : user.subscription_status === 'starter'
-                              ? 'bg-blue-100 text-blue-800'
-                              : 'bg-gray-100 text-gray-800'
+                              : 'bg-yellow-100 text-yellow-800'
                           }`}>
-                            {user.subscription_status === 'unpaid' ? 'Unpaid' : 
-                             user.subscription_status === 'starter' ? 'Starter' : 'Advanced'}
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            {user.email_confirmed_at ? 'Confirmed' : 'Pending'}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                           {new Date(user.created_at).toLocaleDateString()}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {user.last_login ? new Date(user.last_login).toLocaleDateString() : 'Never'}
+                          {user.last_sign_in_at ? new Date(user.last_sign_in_at).toLocaleDateString() : 'Never'}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                           <button className="text-emerald-600 hover:text-emerald-900 mr-3">Edit</button>
