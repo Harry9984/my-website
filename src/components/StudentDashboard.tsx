@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, hasValidConfig } from '../lib/supabase';
 import { User, Video } from '../types';
 import { 
   TrendingUp, 
@@ -52,7 +52,9 @@ export default function StudentDashboard({ user }: StudentDashboardProps) {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    if (hasValidConfig) {
+      await supabase.auth.signOut();
+    }
     navigate('/');
   };
 

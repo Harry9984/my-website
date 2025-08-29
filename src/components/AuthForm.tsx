@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase, hasValidConfig } from '../lib/supabase';
 import { TrendingUp, Mail, Lock, User, Eye, EyeOff } from 'lucide-react';
 
 export default function AuthForm() {
@@ -18,6 +18,12 @@ export default function AuthForm() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!hasValidConfig) {
+      setError('Supabase configuration is missing. Please set up your environment variables.');
+      return;
+    }
+    
     setLoading(true);
     setError('');
 

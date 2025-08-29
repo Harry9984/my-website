@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../lib/supabase';
+import { supabase, hasValidConfig } from '../lib/supabase';
 import { User, Video, SuccessStory } from '../types';
 import { 
   Users, 
@@ -38,6 +38,21 @@ export default function AdminDashboard() {
 
   const fetchData = async () => {
     setLoading(true);
+    
+    if (!hasValidConfig) {
+      // Show mock data when Supabase is not configured
+      const mockUser: User = {
+        id: 'mock-admin-id',
+        email: 'admin@themarketsecret.com',
+        full_name: 'Admin User',
+        subscription_status: 'advanced',
+        created_at: new Date().toISOString(),
+        last_login: new Date().toISOString()
+      };
+      setUsers([mockUser]);
+      setLoading(false);
+      return;
+    }
     
     try {
       // Fetch all user profiles from the profiles table
@@ -93,7 +108,9 @@ export default function AdminDashboard() {
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    if (hasValidConfig) {
+      await supabase.auth.signOut();
+    }
     navigate('/');
   };
 
