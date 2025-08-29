@@ -17,7 +17,8 @@ import {
   Upload,
   Calendar,
   Mail,
-  UserCheck
+  UserCheck,
+  CheckCircle
 } from 'lucide-react';
 
 interface AuthUser {
@@ -170,17 +171,17 @@ export default function AdminDashboard() {
               <Users className="w-8 h-8 text-blue-600" />
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Total Users</p>
-                <p className="text-2xl font-semibold text-gray-900">{users.length}</p>
+                <p className="text-2xl font-semibold text-gray-900">{authUsers.length}</p>
               </div>
             </div>
           </div>
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center">
-              <Users className="w-8 h-8 text-emerald-600" />
+              <UserCheck className="w-8 h-8 text-emerald-600" />
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Paid Users</p>
+                <p className="text-sm font-medium text-gray-600">Confirmed Users</p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {users.filter(u => u.subscription_status !== 'unpaid').length}
+                  {authUsers.filter(u => u.email_confirmed_at).length}
                 </p>
               </div>
             </div>
@@ -200,7 +201,7 @@ export default function AdminDashboard() {
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">Success Stories</p>
                 <p className="text-2xl font-semibold text-gray-900">{stories.length}</p>
-              <p className="text-2xl font-semibold text-gray-900">{authUsers.length}</p>
+              </div>
             </div>
           </div>
         </div>
@@ -250,11 +251,11 @@ export default function AdminDashboard() {
                     if (activeTab === 'videos') setShowVideoModal(true);
                     if (activeTab === 'stories') setShowStoryModal(true);
                   }}
-            <UserCheck className="w-8 h-8 text-emerald-600" />
+                  className="flex items-center space-x-2 bg-emerald-600 text-white px-4 py-2 rounded-lg hover:bg-emerald-700 transition-colors"
                 >
-              <p className="text-sm font-medium text-gray-600">Confirmed Users</p>
+                  <Plus className="w-5 h-5" />
                   <span>Add {activeTab === 'videos' ? 'Video' : 'Story'}</span>
-                {authUsers.filter(u => u.email_confirmed_at).length}
+                </button>
               )}
             </div>
           </div>
